@@ -1,0 +1,1536 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DataLens — Insights & Analytics Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+  <style>
+    /* ============================================================
+       CSS VARIABLES & RESET
+    ============================================================ */
+    :root {
+      --bg:        #f7f8fc;
+      --bg-card:   #ffffff;
+      --bg-nav:    rgba(247,248,252,0.88);
+      --border:    #e2e5ef;
+      --text:      #0f1523;
+      --text-muted:#6b7492;
+      --accent:    #3b55e6;
+      --accent-2:  #6c47ff;
+      --accent-3:  #00c7b1;
+      --danger:    #e63b6f;
+      --shadow:    0 2px 24px rgba(15,21,35,0.08);
+      --shadow-lg: 0 8px 48px rgba(15,21,35,0.13);
+      --radius:    14px;
+      --transition: 0.22s cubic-bezier(.4,0,.2,1);
+    }
+    [data-theme="dark"] {
+      --bg:        #0d0f1a;
+      --bg-card:   #151825;
+      --bg-nav:    rgba(13,15,26,0.92);
+      --border:    #232740;
+      --text:      #e8eaf6;
+      --text-muted:#7d86b0;
+      --shadow:    0 2px 24px rgba(0,0,0,0.4);
+      --shadow-lg: 0 8px 48px rgba(0,0,0,0.5);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      transition: background var(--transition), color var(--transition);
+      overflow-x: hidden;
+    }
+    img { max-width: 100%; }
+    a { text-decoration: none; color: inherit; }
+
+    /* ============================================================
+       UTILITY
+    ============================================================ */
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+    .section { padding: 96px 0; }
+    .section-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
+      color: var(--accent); margin-bottom: 12px; display: block;
+    }
+    .section-title {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(2rem, 4vw, 3rem);
+      line-height: 1.15; margin-bottom: 16px;
+    }
+    .section-sub {
+      color: var(--text-muted); max-width: 540px;
+      font-size: 1.05rem; margin-bottom: 48px;
+    }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 28px; border-radius: 8px; font-size: .92rem;
+      font-weight: 600; cursor: pointer; border: none;
+      transition: all var(--transition); white-space: nowrap;
+    }
+    .btn-primary {
+      background: var(--accent); color: #fff;
+    }
+    .btn-primary:hover { background: var(--accent-2); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(59,85,230,.35); }
+    .btn-outline {
+      background: transparent; color: var(--text);
+      border: 1.5px solid var(--border);
+    }
+    .btn-outline:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-2px); }
+    .tag {
+      display: inline-block; padding: 3px 10px; border-radius: 20px;
+      font-size: .75rem; font-weight: 600; letter-spacing: .04em;
+    }
+    .fade-in { opacity: 0; transform: translateY(28px); transition: opacity .6s ease, transform .6s ease; }
+    .fade-in.visible { opacity: 1; transform: translateY(0); }
+
+    /* ============================================================
+       NAVBAR
+    ============================================================ */
+    .nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+      background: var(--bg-nav); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      transition: all var(--transition);
+    }
+    .nav-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      height: 68px;
+    }
+    .nav-logo {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.45rem; letter-spacing: -.01em;
+    }
+    .nav-logo span { color: var(--accent); }
+    .nav-links {
+      display: flex; gap: 32px; list-style: none;
+    }
+    .nav-links a {
+      font-size: .9rem; font-weight: 500; color: var(--text-muted);
+      transition: color var(--transition); position: relative;
+    }
+    .nav-links a::after {
+      content: ''; position: absolute; bottom: -3px; left: 0; right: 0;
+      height: 2px; background: var(--accent); border-radius: 2px;
+      transform: scaleX(0); transition: transform var(--transition);
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-links a:hover::after { transform: scaleX(1); }
+    .nav-right { display: flex; align-items: center; gap: 12px; }
+    .theme-toggle {
+      width: 44px; height: 44px; border-radius: 10px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-size: 1.15rem; transition: all var(--transition);
+    }
+    .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+    .hamburger {
+      display: none; flex-direction: column; gap: 5px;
+      cursor: pointer; padding: 8px;
+    }
+    .hamburger span { display: block; width: 22px; height: 2px; background: var(--text); border-radius: 2px; transition: all var(--transition); }
+    .mobile-menu {
+      display: none; flex-direction: column; gap: 0;
+      background: var(--bg-card); border-top: 1px solid var(--border);
+      padding: 12px 0;
+    }
+    .mobile-menu a {
+      padding: 12px 24px; font-weight: 500; color: var(--text-muted);
+      transition: color var(--transition);
+    }
+    .mobile-menu a:hover { color: var(--accent); }
+    .mobile-menu.open { display: flex; }
+
+    /* ============================================================
+       HERO
+    ============================================================ */
+    .hero {
+      min-height: 100vh; display: flex; align-items: center;
+      padding-top: 68px; position: relative; overflow: hidden;
+    }
+    .hero-bg {
+      position: absolute; inset: 0; z-index: 0;
+      background: radial-gradient(ellipse 80% 60% at 60% 40%, rgba(59,85,230,.09) 0%, transparent 70%),
+                  radial-gradient(ellipse 50% 40% at 10% 80%, rgba(108,71,255,.07) 0%, transparent 70%);
+    }
+    .hero-grid {
+      position: absolute; inset: 0; z-index: 0; opacity: .4;
+      background-image: linear-gradient(var(--border) 1px, transparent 1px),
+                        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 48px 48px;
+      -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, black 0%, transparent 80%);
+              mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, black 0%, transparent 80%);
+    }
+    .hero-content {
+      position: relative; z-index: 1; max-width: 720px;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 16px; border-radius: 20px;
+      background: rgba(59,85,230,.08); border: 1px solid rgba(59,85,230,.2);
+      color: var(--accent); font-size: .8rem; font-weight: 600;
+      letter-spacing: .06em; text-transform: uppercase;
+      margin-bottom: 28px;
+    }
+    .hero-badge-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: pulse 1.8s ease infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.85)} }
+    .hero-title {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(2.8rem, 6vw, 5.2rem);
+      line-height: 1.06; letter-spacing: -.02em;
+      margin-bottom: 24px;
+    }
+    .hero-title em { font-style: italic; color: var(--accent); }
+    .hero-desc {
+      font-size: 1.15rem; color: var(--text-muted);
+      max-width: 520px; margin-bottom: 40px; line-height: 1.75;
+    }
+    .hero-actions { display: flex; gap: 14px; flex-wrap: wrap; }
+    .hero-stats {
+      display: flex; gap: 40px; margin-top: 64px; flex-wrap: wrap;
+    }
+    .hero-stat-num {
+      font-family: 'DM Serif Display', serif;
+      font-size: 2.2rem; color: var(--text);
+    }
+    .hero-stat-label {
+      font-size: .82rem; color: var(--text-muted); font-weight: 500; margin-top: 2px;
+    }
+    .hero-visual {
+      position: absolute; right: -20px; top: 50%; transform: translateY(-50%);
+      width: 480px; z-index: 1;
+      display: flex; flex-direction: column; gap: 14px;
+    }
+    .hero-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px 24px;
+      box-shadow: var(--shadow);
+      animation: floatCard 4s ease-in-out infinite;
+    }
+    .hero-card:nth-child(2) { animation-delay: -2s; margin-left: 40px; }
+    @keyframes floatCard {
+      0%,100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+    .hero-card-label { font-size: .75rem; color: var(--text-muted); font-weight: 600; letter-spacing: .07em; text-transform: uppercase; margin-bottom: 6px; }
+    .hero-card-num { font-family: 'DM Serif Display', serif; font-size: 1.8rem; }
+    .hero-card-bar { height: 4px; border-radius: 4px; background: var(--border); margin-top: 10px; overflow: hidden; }
+    .hero-card-bar-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
+
+    /* ============================================================
+       ABOUT
+    ============================================================ */
+    .about-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center;
+    }
+    .about-img-wrap {
+      position: relative;
+    }
+    .about-img-bg {
+      width: 100%; aspect-ratio: 4/3; border-radius: var(--radius);
+      background: linear-gradient(135deg, rgba(59,85,230,.12), rgba(108,71,255,.08));
+      border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 5rem; position: relative; overflow: hidden;
+    }
+    .about-img-bg::before {
+      content: ''; position: absolute; inset: 0;
+      background: repeating-linear-gradient(45deg, transparent, transparent 20px, rgba(59,85,230,.04) 20px, rgba(59,85,230,.04) 21px);
+    }
+    .about-badge {
+      position: absolute; bottom: -16px; right: -16px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px 20px;
+      box-shadow: var(--shadow-lg); min-width: 160px;
+    }
+    .about-badge-num { font-family: 'DM Serif Display', serif; font-size: 2rem; color: var(--accent); }
+    .about-badge-text { font-size: .78rem; color: var(--text-muted); }
+    .skills-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
+    .skill-chip {
+      padding: 8px 16px; border-radius: 8px;
+      background: var(--bg); border: 1px solid var(--border);
+      font-size: .84rem; font-weight: 500;
+      display: flex; align-items: center; gap: 6px;
+      transition: all var(--transition);
+    }
+    .skill-chip:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-2px); }
+    .skill-chip-icon { font-size: 1rem; }
+
+    /* ============================================================
+       DATASET SHOWCASE
+    ============================================================ */
+    .dataset-controls {
+      display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 40px;
+    }
+    .search-box {
+      flex: 1; min-width: 240px;
+      display: flex; align-items: center; gap: 10px;
+      background: var(--bg-card); border: 1.5px solid var(--border);
+      border-radius: 10px; padding: 10px 16px;
+      transition: border-color var(--transition);
+    }
+    .search-box:focus-within { border-color: var(--accent); }
+    .search-box input {
+      border: none; outline: none; background: transparent;
+      color: var(--text); font-family: 'DM Sans', sans-serif;
+      font-size: .92rem; width: 100%;
+    }
+    .filter-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+    .filter-chip {
+      padding: 8px 16px; border-radius: 20px; font-size: .82rem;
+      font-weight: 600; cursor: pointer; border: 1.5px solid var(--border);
+      background: var(--bg-card); color: var(--text-muted);
+      transition: all var(--transition);
+    }
+    .filter-chip.active, .filter-chip:hover {
+      background: var(--accent); color: #fff; border-color: var(--accent);
+    }
+    .datasets-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px;
+    }
+    .dataset-card {
+      background: var(--bg-card); border: 1.5px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
+      transition: all var(--transition); cursor: pointer;
+    }
+    .dataset-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-lg); border-color: var(--accent); }
+    .dataset-card-header {
+      padding: 24px 24px 16px;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+    }
+    .dataset-card-icon {
+      width: 48px; height: 48px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; margin-bottom: 14px;
+    }
+    .dataset-card-title {
+      font-weight: 700; font-size: 1.05rem; margin-bottom: 6px;
+    }
+    .dataset-card-desc {
+      font-size: .86rem; color: var(--text-muted); line-height: 1.6;
+    }
+    .dataset-card-body { padding: 16px 24px 20px; }
+    .dataset-card-meta {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 14px;
+    }
+    .dataset-card-actions { display: flex; gap: 8px; }
+    .btn-sm {
+      padding: 8px 16px; font-size: .82rem;
+    }
+    .tag-sales { background: rgba(59,85,230,.1); color: var(--accent); }
+    .tag-agri  { background: rgba(0,199,177,.1); color: var(--accent-3); }
+    .tag-fin   { background: rgba(230,59,111,.1); color: var(--danger); }
+    .tag-health{ background: rgba(108,71,255,.1); color: var(--accent-2); }
+    .tag-tech  { background: rgba(255,160,0,.1); color: #e6930a; }
+
+    /* ============================================================
+       DATA VISUALIZATION
+    ============================================================ */
+    .viz-tabs {
+      display: flex; gap: 6px; margin-bottom: 32px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 6px; width: fit-content;
+    }
+    .viz-tab {
+      padding: 9px 22px; border-radius: 7px; cursor: pointer;
+      font-size: .88rem; font-weight: 600; transition: all var(--transition);
+      color: var(--text-muted);
+    }
+    .viz-tab.active {
+      background: var(--accent); color: #fff;
+    }
+    .chart-container {
+      background: var(--bg-card); border: 1.5px solid var(--border);
+      border-radius: var(--radius); padding: 28px;
+      position: relative; height: 380px;
+    }
+    .chart-header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      margin-bottom: 24px;
+    }
+    .chart-title { font-weight: 700; font-size: 1.05rem; }
+    .chart-sub { font-size: .82rem; color: var(--text-muted); margin-top: 4px; }
+    .chart-inner { position: relative; height: 260px; }
+
+    /* ============================================================
+       UPLOAD SECTION
+    ============================================================ */
+    .upload-area {
+      background: var(--bg-card); border: 2px dashed var(--border);
+      border-radius: var(--radius); padding: 56px 32px;
+      text-align: center; cursor: pointer;
+      transition: all var(--transition);
+    }
+    .upload-area:hover, .upload-area.drag-over {
+      border-color: var(--accent); background: rgba(59,85,230,.03);
+    }
+    .upload-icon { font-size: 3rem; margin-bottom: 16px; }
+    .upload-title { font-size: 1.15rem; font-weight: 700; margin-bottom: 8px; }
+    .upload-sub { font-size: .88rem; color: var(--text-muted); }
+    #file-input { display: none; }
+    .upload-formats {
+      display: flex; gap: 10px; justify-content: center; margin-top: 20px; flex-wrap: wrap;
+    }
+    .format-badge {
+      padding: 4px 12px; border-radius: 6px; font-size: .78rem; font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--bg); border: 1px solid var(--border); color: var(--text-muted);
+    }
+    .table-wrap {
+      overflow-x: auto; margin-top: 32px;
+      background: var(--bg-card); border: 1.5px solid var(--border);
+      border-radius: var(--radius); display: none;
+    }
+    .table-wrap.visible { display: block; }
+    .data-table { width: 100%; border-collapse: collapse; font-size: .86rem; }
+    .data-table th {
+      background: var(--bg); padding: 12px 16px; text-align: left;
+      font-weight: 600; border-bottom: 1.5px solid var(--border);
+      font-family: 'JetBrains Mono', monospace; font-size: .78rem;
+      color: var(--text-muted); letter-spacing: .04em; text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .data-table td {
+      padding: 11px 16px; border-bottom: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: rgba(59,85,230,.03); }
+    .table-info {
+      padding: 12px 20px; border-top: 1px solid var(--border);
+      font-size: .82rem; color: var(--text-muted);
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+    }
+
+    /* ============================================================
+       DASHBOARD
+    ============================================================ */
+    .dashboard-wrap {
+      background: var(--bg-card); border: 1.5px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
+    }
+    .dashboard-header {
+      padding: 20px 28px; border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+    }
+    .dash-title { font-weight: 700; font-size: 1.05rem; }
+    .dashboard-filters { display: flex; gap: 10px; flex-wrap: wrap; }
+    .dash-filter {
+      padding: 7px 16px; border-radius: 8px; font-size: .82rem; font-weight: 500;
+      background: var(--bg); border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; transition: all var(--transition);
+    }
+    .dash-filter:hover { border-color: var(--accent); color: var(--accent); }
+    .metrics-row {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      border-bottom: 1px solid var(--border);
+    }
+    .metric-item {
+      padding: 24px 28px; border-right: 1px solid var(--border);
+    }
+    .metric-item:last-child { border-right: none; }
+    .metric-value {
+      font-family: 'DM Serif Display', serif; font-size: 2.2rem;
+      line-height: 1; margin-bottom: 6px;
+    }
+    .metric-label { font-size: .82rem; color: var(--text-muted); font-weight: 500; }
+    .metric-delta {
+      font-size: .78rem; font-weight: 600; margin-top: 6px;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .delta-up { color: var(--accent-3); }
+    .delta-down { color: var(--danger); }
+    .dashboard-charts {
+      display: grid; grid-template-columns: 2fr 1fr; gap: 0;
+    }
+    .dash-chart { padding: 28px; border-right: 1px solid var(--border); }
+    .dash-chart:last-child { border-right: none; }
+    .dash-chart-title { font-weight: 700; margin-bottom: 6px; }
+    .dash-chart-sub { font-size: .82rem; color: var(--text-muted); margin-bottom: 20px; }
+    .dash-chart-inner { height: 200px; position: relative; }
+
+    /* ============================================================
+       CONTACT
+    ============================================================ */
+    .contact-grid { display: grid; grid-template-columns: 1fr 1.4fr; gap: 64px; align-items: start; }
+    .contact-info { }
+    .contact-info-item {
+      display: flex; gap: 16px; align-items: flex-start; margin-bottom: 28px;
+    }
+    .contact-info-icon {
+      width: 44px; height: 44px; min-width: 44px;
+      border-radius: 10px; display: flex; align-items: center;
+      justify-content: center; font-size: 1.1rem;
+      background: rgba(59,85,230,.08); color: var(--accent);
+    }
+    .contact-info-label { font-size: .8rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 2px; }
+    .contact-info-val { font-weight: 600; }
+    .social-links { display: flex; gap: 12px; margin-top: 32px; }
+    .social-link {
+      width: 44px; height: 44px; border-radius: 10px;
+      background: var(--bg-card); border: 1.5px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; cursor: pointer; transition: all var(--transition);
+    }
+    .social-link:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-3px); box-shadow: var(--shadow); }
+    .contact-form { display: flex; flex-direction: column; gap: 18px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-label { font-size: .83rem; font-weight: 600; color: var(--text-muted); }
+    .form-input, .form-textarea {
+      padding: 12px 16px; border-radius: 10px;
+      background: var(--bg-card); border: 1.5px solid var(--border);
+      color: var(--text); font-family: 'DM Sans', sans-serif; font-size: .92rem;
+      transition: border-color var(--transition); outline: none; resize: vertical;
+    }
+    .form-input:focus, .form-textarea:focus { border-color: var(--accent); }
+    .form-textarea { min-height: 120px; }
+    .form-success {
+      display: none; padding: 16px 20px; border-radius: 10px;
+      background: rgba(0,199,177,.1); border: 1px solid rgba(0,199,177,.3);
+      color: var(--accent-3); font-weight: 600; font-size: .92rem;
+    }
+
+    /* ============================================================
+       FOOTER
+    ============================================================ */
+    footer {
+      border-top: 1px solid var(--border); padding: 40px 0;
+      background: var(--bg-card);
+    }
+    .footer-inner {
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 16px;
+    }
+    .footer-logo { font-family: 'DM Serif Display', serif; font-size: 1.2rem; }
+    .footer-logo span { color: var(--accent); }
+    .footer-copy { font-size: .83rem; color: var(--text-muted); }
+    .footer-links { display: flex; gap: 24px; }
+    .footer-links a { font-size: .83rem; color: var(--text-muted); transition: color var(--transition); }
+    .footer-links a:hover { color: var(--accent); }
+
+    /* ============================================================
+       MODAL
+    ============================================================ */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; z-index: 2000;
+      background: rgba(0,0,0,.5); backdrop-filter: blur(4px);
+      align-items: center; justify-content: center; padding: 24px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--bg-card); border: 1.5px solid var(--border);
+      border-radius: 18px; padding: 36px; max-width: 520px; width: 100%;
+      box-shadow: var(--shadow-lg); animation: modalIn .28s ease;
+    }
+    @keyframes modalIn { from { opacity:0; transform: scale(.94) translateY(20px); } to { opacity:1; transform: none; } }
+    .modal-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+    .modal-close {
+      width: 36px; height: 36px; border-radius: 8px;
+      background: var(--bg); border: 1px solid var(--border);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; transition: all var(--transition); color: var(--text-muted);
+    }
+    .modal-close:hover { border-color: var(--danger); color: var(--danger); }
+    .modal-dl { display: flex; flex-direction: column; gap: 12px; margin: 20px 0; }
+    .modal-dl dt { font-size: .78rem; text-transform: uppercase; letter-spacing: .07em; color: var(--text-muted); font-weight: 600; margin-bottom: 2px; }
+    .modal-dl dd { font-size: .92rem; font-weight: 500; }
+
+    /* ============================================================
+       SCROLL TO TOP
+    ============================================================ */
+    .scroll-top {
+      position: fixed; bottom: 28px; right: 28px; z-index: 900;
+      width: 48px; height: 48px; border-radius: 12px;
+      background: var(--accent); color: #fff;
+      border: none; cursor: pointer; font-size: 1.1rem;
+      box-shadow: var(--shadow-lg); opacity: 0; pointer-events: none;
+      transition: all var(--transition); display: flex; align-items: center; justify-content: center;
+    }
+    .scroll-top.visible { opacity: 1; pointer-events: all; }
+    .scroll-top:hover { background: var(--accent-2); transform: translateY(-3px); }
+
+    /* ============================================================
+       RESPONSIVE
+    ============================================================ */
+    @media (max-width: 900px) {
+      .nav-links { display: none; }
+      .hamburger { display: flex; }
+      .hero-visual { display: none; }
+      .about-grid { grid-template-columns: 1fr; gap: 40px; }
+      .about-img-wrap { max-width: 400px; }
+      .metrics-row { grid-template-columns: repeat(2, 1fr); }
+      .metric-item:nth-child(2) { border-right: none; }
+      .dashboard-charts { grid-template-columns: 1fr; }
+      .dash-chart { border-right: none; border-bottom: 1px solid var(--border); }
+      .dash-chart:last-child { border-bottom: none; }
+      .contact-grid { grid-template-columns: 1fr; gap: 40px; }
+      .form-row { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 600px) {
+      .section { padding: 64px 0; }
+      .hero-title { font-size: 2.4rem; }
+      .hero-stats { gap: 24px; }
+      .metrics-row { grid-template-columns: 1fr 1fr; }
+      .datasets-grid { grid-template-columns: 1fr; }
+      .viz-tabs { flex-wrap: wrap; }
+      .footer-inner { flex-direction: column; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ============================================================
+     NAVBAR
+============================================================ -->
+<nav class="nav" id="navbar">
+  <div class="container nav-inner">
+    <a href="#home" class="nav-logo">Data<span>Lens</span></a>
+    <ul class="nav-links">
+      <li><a href="#home">Home</a></li>
+      <li><a href="#about">About</a></li>
+      <li><a href="#datasets">Datasets</a></li>
+      <li><a href="#visualization">Charts</a></li>
+      <li><a href="#upload">Upload</a></li>
+      <li><a href="#dashboard">Dashboard</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ul>
+    <div class="nav-right">
+      <button class="theme-toggle" id="themeToggle" title="Toggle dark mode">🌙</button>
+      <a href="#upload" class="btn btn-primary btn-sm">Upload Data</a>
+      <div class="hamburger" id="hamburger" onclick="toggleMenu()">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+  </div>
+  <div class="mobile-menu" id="mobileMenu">
+    <a href="#home" onclick="closeMenu()">Home</a>
+    <a href="#about" onclick="closeMenu()">About</a>
+    <a href="#datasets" onclick="closeMenu()">Datasets</a>
+    <a href="#visualization" onclick="closeMenu()">Charts</a>
+    <a href="#upload" onclick="closeMenu()">Upload</a>
+    <a href="#dashboard" onclick="closeMenu()">Dashboard</a>
+    <a href="#contact" onclick="closeMenu()">Contact</a>
+  </div>
+</nav>
+
+<!-- ============================================================
+     HERO
+============================================================ -->
+<section class="hero" id="home">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="container">
+    <div class="hero-content fade-in">
+      <div class="hero-badge"><span class="hero-badge-dot"></span>v2.0 — Now with AI Insights</div>
+      <h1 class="hero-title">Data <em>Insights</em> &amp;<br>Analytics Hub</h1>
+      <p class="hero-desc">A professional platform to showcase datasets, run interactive visualizations, and present data-driven insights to clients, educators, and collaborators.</p>
+      <div class="hero-actions">
+        <a href="#datasets" class="btn btn-primary">View Projects →</a>
+        <a href="#visualization" class="btn btn-outline">Explore Data</a>
+      </div>
+      <div class="hero-stats">
+        <div>
+          <div class="hero-stat-num" id="stat-datasets">0</div>
+          <div class="hero-stat-label">Datasets Hosted</div>
+        </div>
+        <div>
+          <div class="hero-stat-num" id="stat-charts">0</div>
+          <div class="hero-stat-label">Visualizations</div>
+        </div>
+        <div>
+          <div class="hero-stat-num" id="stat-categories">0</div>
+          <div class="hero-stat-label">Categories</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Floating cards -->
+  <div class="hero-visual">
+    <div class="hero-card">
+      <div class="hero-card-label">Monthly Revenue</div>
+      <div class="hero-card-num">₹4.82M</div>
+      <div class="hero-card-bar"><div class="hero-card-bar-fill" style="width:74%"></div></div>
+    </div>
+    <div class="hero-card">
+      <div class="hero-card-label">Data Accuracy</div>
+      <div class="hero-card-num">98.4%</div>
+      <div class="hero-card-bar"><div class="hero-card-bar-fill" style="width:98%"></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     ABOUT
+============================================================ -->
+<section class="section" id="about" style="background: var(--bg-card); border-top:1px solid var(--border); border-bottom:1px solid var(--border);">
+  <div class="container">
+    <div class="about-grid fade-in">
+      <div class="about-img-wrap">
+        <div class="about-img-bg">📊</div>
+        <div class="about-badge">
+          <div class="about-badge-num">50+</div>
+          <div class="about-badge-text">Projects Completed</div>
+        </div>
+      </div>
+      <div>
+        <span class="section-label">About This Platform</span>
+        <h2 class="section-title">Turning Raw Data into <em style="font-style:italic;color:var(--accent)">Clear Decisions</em></h2>
+        <p style="color:var(--text-muted); margin-bottom:16px; line-height:1.8;">DataLens is built for analysts, researchers, and data enthusiasts who need a professional space to present their work. Upload CSVs, explore patterns interactively, and share insights with stakeholders — all in one polished platform.</p>
+        <p style="color:var(--text-muted); margin-bottom:28px; line-height:1.8;">Whether you're a student presenting a capstone project or a data scientist pitching to clients, DataLens gives your data the presentation it deserves.</p>
+        <div class="skills-grid">
+          <div class="skill-chip"><span class="skill-chip-icon">📈</span> Data Analysis</div>
+          <div class="skill-chip"><span class="skill-chip-icon">🔬</span> Research</div>
+          <div class="skill-chip"><span class="skill-chip-icon">📉</span> Visualization</div>
+          <div class="skill-chip"><span class="skill-chip-icon">🤖</span> Machine Learning</div>
+          <div class="skill-chip"><span class="skill-chip-icon">🗃️</span> SQL & Databases</div>
+          <div class="skill-chip"><span class="skill-chip-icon">🐍</span> Python & R</div>
+          <div class="skill-chip"><span class="skill-chip-icon">☁️</span> Cloud Analytics</div>
+          <div class="skill-chip"><span class="skill-chip-icon">📋</span> Business Intelligence</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     DATASET SHOWCASE
+============================================================ -->
+<section class="section" id="datasets">
+  <div class="container">
+    <div class="fade-in">
+      <span class="section-label">Dataset Showcase</span>
+      <h2 class="section-title">Explore the Collection</h2>
+      <p class="section-sub">Browse, filter, and download datasets across multiple domains. Each entry is documented and ready for analysis.</p>
+    </div>
+
+    <div class="dataset-controls fade-in">
+      <div class="search-box">
+        <span>🔍</span>
+        <input type="text" id="datasetSearch" placeholder="Search datasets by title or description…" oninput="filterDatasets()">
+      </div>
+      <div class="filter-chips" id="filterChips">
+        <button class="filter-chip active" data-cat="all" onclick="setFilter(this)">All</button>
+        <button class="filter-chip" data-cat="Sales" onclick="setFilter(this)">Sales</button>
+        <button class="filter-chip" data-cat="Agriculture" onclick="setFilter(this)">Agriculture</button>
+        <button class="filter-chip" data-cat="Finance" onclick="setFilter(this)">Finance</button>
+        <button class="filter-chip" data-cat="Health" onclick="setFilter(this)">Health</button>
+        <button class="filter-chip" data-cat="Technology" onclick="setFilter(this)">Technology</button>
+      </div>
+    </div>
+
+    <div class="datasets-grid fade-in" id="datasetsGrid"></div>
+  </div>
+</section>
+
+<!-- ============================================================
+     DATA VISUALIZATION
+============================================================ -->
+<section class="section" id="visualization" style="background: var(--bg-card); border-top:1px solid var(--border); border-bottom:1px solid var(--border);">
+  <div class="container">
+    <div class="fade-in">
+      <span class="section-label">Data Visualization</span>
+      <h2 class="section-title">Interactive Charts</h2>
+      <p class="section-sub">Explore the <strong>Zudio Sales 2024</strong> real dataset with 4 views — or upload your own CSV to populate these charts.</p>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:20px;" class="fade-in">
+      <div class="viz-tabs" id="vizTabs" style="margin-bottom:0;">
+        <button class="viz-tab active" data-chart="bar" onclick="switchChart('bar', this)">Bar Chart</button>
+        <button class="viz-tab" data-chart="line" onclick="switchChart('line', this)">Line Chart</button>
+        <button class="viz-tab" data-chart="pie" onclick="switchChart('pie', this)">Pie Chart</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+        <span style="font-size:.75rem;color:var(--text-muted);font-weight:600;letter-spacing:.06em;text-transform:uppercase;">Zudio View:</span>
+        <button class="zudio-sub-tab" data-view="monthly" onclick="loadZudioChart('monthly')" style="padding:7px 14px;border-radius:7px;border:1.5px solid var(--border);cursor:pointer;font-size:.8rem;font-weight:600;background:var(--accent);color:#fff;transition:all .2s;">Monthly</button>
+        <button class="zudio-sub-tab" data-view="category" onclick="loadZudioChart('category')" style="padding:7px 14px;border-radius:7px;border:1.5px solid var(--border);cursor:pointer;font-size:.8rem;font-weight:600;background:;color:var(--text-muted);transition:all .2s;">Category</button>
+        <button class="zudio-sub-tab" data-view="state" onclick="loadZudioChart('state')" style="padding:7px 14px;border-radius:7px;border:1.5px solid var(--border);cursor:pointer;font-size:.8rem;font-weight:600;background:;color:var(--text-muted);transition:all .2s;">State</button>
+        <button class="zudio-sub-tab" data-view="clothing" onclick="loadZudioChart('clothing')" style="padding:7px 14px;border-radius:7px;border:1.5px solid var(--border);cursor:pointer;font-size:.8rem;font-weight:600;background:;color:var(--text-muted);transition:all .2s;">Clothing Type</button>
+      </div>
+    </div>
+
+    <div class="chart-container fade-in">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title" id="chartTitle">Zudio Sales 2024 — Monthly Sales Profit (₹)</div>
+          <div class="chart-sub" id="chartSub">Real data: Zudio_sales_data.csv | 7,899 records</div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="downloadChart()">⬇ Export PNG</button>
+      </div>
+      <div class="chart-inner">
+        <canvas id="mainChart"></canvas>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     UPLOAD
+============================================================ -->
+<section class="section" id="upload">
+  <div class="container" style="max-width:860px">
+    <div class="fade-in">
+      <span class="section-label">Upload Dataset</span>
+      <h2 class="section-title">Import Your Data</h2>
+      <p class="section-sub">Upload a CSV file to preview it, visualize it, and instantly add it as a card in the Dataset Showcase above.</p>
+    </div>
+
+    <!-- Step 1: Drop zone -->
+    <div class="upload-area fade-in" id="uploadArea" onclick="document.getElementById('file-input').click()" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+      <div class="upload-icon" id="uploadIcon">📂</div>
+      <div class="upload-title" id="uploadTitle">Drag & Drop or Click to Upload</div>
+      <div class="upload-sub" id="uploadSub">Your file stays in your browser — nothing is sent to any server</div>
+      <div class="upload-formats">
+        <span class="format-badge">.CSV</span>
+        <span class="format-badge">.TSV</span>
+        <span class="format-badge">.TXT</span>
+      </div>
+    </div>
+    <input type="file" id="file-input" accept=".csv,.tsv,.txt" onchange="handleFileSelect(event)">
+
+    <!-- Step 2: Card customiser — shown after file is parsed -->
+    <div id="cardCustomiser" style="display:none; margin-top:28px;">
+      <div style="background:var(--bg-card); border:1.5px solid var(--border); border-radius:var(--radius); padding:28px;">
+        <div style="font-weight:700; font-size:1rem; margin-bottom:6px;">📝 Customise Your Dataset Card</div>
+        <div style="font-size:.85rem; color:var(--text-muted); margin-bottom:20px;">Fill in the details below — then click <strong>Add to Showcase</strong> to create a card.</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+          <div class="form-group">
+            <label class="form-label">Dataset Title</label>
+            <input class="form-input" id="cardTitle" type="text" placeholder="e.g. Student Exam Results 2024">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Category</label>
+            <select class="form-input" id="cardCategory" style="cursor:pointer;">
+              <option value="Sales">Sales</option>
+              <option value="Agriculture">Agriculture</option>
+              <option value="Finance">Finance</option>
+              <option value="Health">Health</option>
+              <option value="Technology">Technology</option>
+              <option value="Education">Education</option>
+              <option value="Environment">Environment</option>
+              <option value="Transport">Transport</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:16px;">
+          <label class="form-label">Short Description</label>
+          <input class="form-input" id="cardDesc" type="text" placeholder="What does this dataset contain?">
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+          <button class="btn btn-primary" onclick="addDatasetCard()">＋ Add to Showcase</button>
+          <button class="btn btn-outline" onclick="sendToChart()">📊 Visualize Only</button>
+          <span id="cardAddedMsg" style="display:none; color:var(--accent-3); font-weight:600; font-size:.9rem;">✅ Card added to Showcase!</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: Data preview table -->
+    <div class="table-wrap" id="tableWrap">
+      <div style="overflow-x:auto;">
+        <table class="data-table" id="previewTable"></table>
+      </div>
+      <div class="table-info">
+        <span id="tableInfo">—</span>
+        <button class="btn btn-outline btn-sm" onclick="sendToChart()">📊 Visualize This Data</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     DASHBOARD
+============================================================ -->
+<section class="section" id="dashboard" style="background: var(--bg-card); border-top:1px solid var(--border); border-bottom:1px solid var(--border);">
+  <div class="container">
+    <div class="fade-in">
+      <span class="section-label">Dashboard</span>
+      <h2 class="section-title">Analytics Overview</h2>
+      <p class="section-sub">A high-level summary of platform metrics and dataset insights.</p>
+    </div>
+
+    <div class="dashboard-wrap fade-in">
+      <div class="dashboard-header">
+        <div class="dash-title">Platform Summary</div>
+        <div class="dashboard-filters">
+          <button class="dash-filter" onclick="this.style.borderColor='var(--accent)'; this.style.color='var(--accent)'">Last 7 days</button>
+          <button class="dash-filter">Last 30 days</button>
+          <button class="dash-filter">This Year</button>
+        </div>
+      </div>
+
+      <div class="metrics-row">
+        <div class="metric-item">
+          <div class="metric-value" style="color:var(--accent)">7</div>
+          <div class="metric-label">Total Datasets</div>
+          <div class="metric-delta delta-up">↑ 1 real dataset added</div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-value" style="color:var(--accent-2)">5</div>
+          <div class="metric-label">Categories</div>
+          <div class="metric-delta delta-up">↑ 1 new</div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-value" style="color:var(--accent-3)">248</div>
+          <div class="metric-label">Total Views</div>
+          <div class="metric-delta delta-up">↑ 18% this month</div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-value" style="color:var(--danger)">64</div>
+          <div class="metric-label">Downloads</div>
+          <div class="metric-delta delta-down">↓ 4% this week</div>
+        </div>
+      </div>
+
+      <div class="dashboard-charts">
+        <div class="dash-chart">
+          <div class="dash-chart-title">Dataset Uploads Over Time</div>
+          <div class="dash-chart-sub">Monthly upload activity across all categories</div>
+          <div class="dash-chart-inner">
+            <canvas id="dashChart1"></canvas>
+          </div>
+        </div>
+        <div class="dash-chart">
+          <div class="dash-chart-title">Category Distribution</div>
+          <div class="dash-chart-sub">Breakdown by topic area</div>
+          <div class="dash-chart-inner">
+            <canvas id="dashChart2"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     CONTACT
+============================================================ -->
+<section class="section" id="contact">
+  <div class="container">
+    <div class="fade-in">
+      <span class="section-label">Contact</span>
+      <h2 class="section-title">Get in Touch</h2>
+      <p class="section-sub">Have a dataset to share, a collaboration in mind, or just want to say hi? Drop a message.</p>
+    </div>
+
+    <div class="contact-grid fade-in">
+      <div class="contact-info">
+        <div class="contact-info-item">
+          <div class="contact-info-icon">📧</div>
+          <div>
+            <div class="contact-info-label">Email</div>
+            <div class="contact-info-val"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="9bf3fef7f7f4dbfffaeffaf7fef5e8b5f2f4">[email&#160;protected]</a></div>
+          </div>
+        </div>
+        <div class="contact-info-item">
+          <div class="contact-info-icon">📍</div>
+          <div>
+            <div class="contact-info-label">Location</div>
+            <div class="contact-info-val">Nashik, Maharashtra, India</div>
+          </div>
+        </div>
+        <div class="contact-info-item">
+          <div class="contact-info-icon">🕒</div>
+          <div>
+            <div class="contact-info-label">Response Time</div>
+            <div class="contact-info-val">Within 24 hours</div>
+          </div>
+        </div>
+        <div class="social-links">
+          <div class="social-link" title="LinkedIn">💼</div>
+          <div class="social-link" title="GitHub">🐙</div>
+          <div class="social-link" title="Twitter">🐦</div>
+          <div class="social-link" title="Kaggle">📊</div>
+        </div>
+      </div>
+
+      <div>
+        <form class="contact-form" onsubmit="submitForm(event)">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Full Name</label>
+              <input class="form-input" type="text" placeholder="Rahul Sharma" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Email Address</label>
+              <input class="form-input" type="email" placeholder="rahul@example.com" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Subject</label>
+            <input class="form-input" type="text" placeholder="Dataset collaboration / Question">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Message</label>
+            <textarea class="form-textarea" placeholder="Tell us about your project or dataset…" required></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;">Send Message →</button>
+          <div class="form-success" id="formSuccess">✅ Message sent! We'll get back to you shortly.</div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     FOOTER
+============================================================ -->
+<footer>
+  <div class="container footer-inner">
+    <div class="footer-logo">Data<span>Lens</span></div>
+    <div class="footer-copy">© 2025 DataLens. Built for data professionals.</div>
+    <div class="footer-links">
+      <a href="#home">Home</a>
+      <a href="#datasets">Datasets</a>
+      <a href="#contact">Contact</a>
+    </div>
+  </div>
+</footer>
+
+<!-- ============================================================
+     DATASET DETAIL MODAL
+============================================================ -->
+<div class="modal-overlay" id="datasetModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div id="modalIcon" style="font-size:2rem; margin-bottom:8px"></div>
+        <h3 id="modalTitle" style="font-family:'DM Serif Display',serif; font-size:1.4rem;"></h3>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <p id="modalDesc" style="color:var(--text-muted); font-size:.92rem; margin-bottom:16px;"></p>
+    <dl class="modal-dl" id="modalDl"></dl>
+    <div style="display:flex; gap:10px; flex-wrap:wrap;" class="modal-actions">
+      <button class="btn btn-primary" onclick="downloadDataset()">⬇ Download Dataset</button>
+      <button class="btn btn-outline" onclick="closeModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Scroll to top -->
+<button class="scroll-top" id="scrollTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+<!-- ============================================================
+     JAVASCRIPT
+============================================================ -->
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+/* ============================================================
+   DATA
+============================================================ */
+const DATASETS = [
+  {
+    id: 0, icon: '\u{1F457}', color: '#e63b6f',
+    title: 'Zudio Sales Data 2024', category: 'Sales',
+    tagClass: 'tag-fin',
+    desc: 'India-wide retail sales from Zudio stores across 8 states — Men, Women & Kids clothing. Includes order details, pricing, quantity and profit for Jan\u2013Dec 2024.',
+    rows: '7,899', cols: 28, size: '2.0 MB', updated: 'Dec 2024',
+    isReal: true,
+    highlights: ['8 Indian states', '3 categories (Men/Women/Kids)', 'Total profit \u20b925 Lakh+', 'Jan\u2013Dec 2024'],
+    chartData: {
+      monthly: {
+        labels: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+        values: [2304772,2177635,2261136,2264574,2245175,2170034,2212031,2318573,2172476,2372190,2312898,233638]
+      },
+      category: {
+        labels: ['Kids','Men','Women'],
+        values: [8441707,8210557,8392870]
+      },
+      state: {
+        labels: ['West Bengal','Delhi','Rajasthan','Uttar Pradesh','Maharashtra','Tamil Nadu','Gujarat','Karnataka'],
+        values: [3242315,3191316,3187912,3163014,3089686,3085623,3050521,3034748]
+      },
+      clothing: {
+        labels: ['Dresses','Skirts','Pants','Sweaters','Jackets','Shirts','Hoodies','T-shirts'],
+        values: [2373512,2320703,2316501,2315043,2304796,2294618,2289815,2278154]
+      }
+    },
+    sample: [
+      ['Store','State','Category','Clothing Type','Price','Quantity','Sales Profit'],
+      ['Zudio','Karnataka','Women','Dresses','1958','5','3916.0'],
+      ['Zudio','Gujarat','Kids','Skirts','2078','1','831.2'],
+      ['Zudio','Uttar Pradesh','Men','Hoodies','1445','2','1156.0'],
+      ['Zudio','West Bengal','Women','Dresses','2469','6','5925.6'],
+      ['Zudio','Maharashtra','Men','Shirts','1780','4','2848.0']
+    ]
+  },
+  {
+    id: 1, icon: '🛒', color: '#3b55e6',
+    title: 'E-Commerce Sales 2024', category: 'Sales',
+    tagClass: 'tag-sales',
+    desc: 'Monthly sales records from a multi-category e-commerce platform including product SKUs, revenue, and returns.',
+    rows: '14,820', cols: 12, size: '1.8 MB', updated: 'Dec 2024',
+    sample: [['Month','Product','Revenue','Returns'],['Jan','Electronics','₹4.2M','₹0.3M'],['Feb','Clothing','₹2.1M','₹0.1M']]
+  },
+  {
+    id: 2, icon: '🌾', color: '#00c7b1',
+    title: 'Maharashtra Crop Yield', category: 'Agriculture',
+    tagClass: 'tag-agri',
+    desc: 'District-wise agricultural yield data for major crops including wheat, rice, and pulses from 2010–2023.',
+    rows: '8,640', cols: 9, size: '0.9 MB', updated: 'Nov 2024',
+    sample: [['District','Crop','Year','Yield(t/ha)'],['Nashik','Grapes','2023','24.5'],['Pune','Wheat','2023','3.2']]
+  },
+  {
+    id: 3, icon: '💹', color: '#e63b6f',
+    title: 'NSE Stock Price History', category: 'Finance',
+    tagClass: 'tag-fin',
+    desc: 'Daily OHLCV data for 50 NSE-listed companies spanning 5 years, suitable for time-series modelling.',
+    rows: '91,250', cols: 7, size: '12.4 MB', updated: 'Jan 2025',
+    sample: [['Date','Symbol','Open','High','Low','Close','Volume'],['01/01/24','RELIANCE','2480','2512','2471','2498','2.3M']]
+  },
+  {
+    id: 4, icon: '🏥', color: '#6c47ff',
+    title: 'Patient Health Outcomes', category: 'Health',
+    tagClass: 'tag-health',
+    desc: 'Anonymised patient data tracking treatment outcomes across 12 hospitals. Ideal for healthcare analytics studies.',
+    rows: '5,400', cols: 18, size: '2.1 MB', updated: 'Oct 2024',
+    sample: [['PatientID','Age','Condition','Treatment','Outcome'],['P001','45','Diabetes','Insulin','Improved'],['P002','62','Hypertension','Medication','Stable']]
+  },
+  {
+    id: 5, icon: '💻', color: '#e6930a',
+    title: 'Tech Startup Funding 2023', category: 'Technology',
+    tagClass: 'tag-tech',
+    desc: 'Global startup funding rounds including investors, amounts, stages, and sector categories for 2023.',
+    rows: '3,210', cols: 11, size: '0.5 MB', updated: 'Mar 2024',
+    sample: [['Startup','Sector','Round','Amount($M)','Investors'],['Paytm','Fintech','Series D','150','SoftBank'],['Zomato','FoodTech','IPO','1200','Public']]
+  },
+  {
+    id: 6, icon: '🌦️', color: '#3b55e6',
+    title: 'India Weather Stations', category: 'Agriculture',
+    tagClass: 'tag-agri',
+    desc: 'Hourly temperature, humidity, and rainfall readings from 200+ weather stations across India for 2023.',
+    rows: '1,752,000', cols: 8, size: '89 MB', updated: 'Jan 2025',
+    sample: [['Station','Date','Temp(°C)','Humidity(%)','Rainfall(mm)'],['Mumbai','15/06/23','31.2','88','12.4']]
+  },
+];
+
+let activeFilter = 'all';
+let activeDataset = null;
+
+/* ============================================================
+   RENDER DATASETS
+============================================================ */
+function renderDatasets() {
+  const q = document.getElementById('datasetSearch').value.toLowerCase();
+  const grid = document.getElementById('datasetsGrid');
+  const filtered = DATASETS.filter(d => {
+    const matchCat = activeFilter === 'all' || d.category === activeFilter;
+    const matchQ = !q || d.title.toLowerCase().includes(q) || d.desc.toLowerCase().includes(q);
+    return matchCat && matchQ;
+  });
+
+  if (!filtered.length) {
+    grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; color:var(--text-muted); padding:40px;">No datasets found for your search.</div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map(d => `
+    <div class="dataset-card" onclick="openDataset(${d.id})" style="${d.isReal ? 'border-color:'+d.color+';box-shadow:0 0 0 3px '+d.color+'18' : ''}">
+      <div class="dataset-card-header">
+        ${d.isReal ? `<div style="position:absolute;top:16px;right:16px;background:#e63b6f;color:#fff;font-size:.7rem;font-weight:700;padding:3px 9px;border-radius:20px;letter-spacing:.05em;">● REAL DATA</div>` : ''}
+        <div class="dataset-card-icon" style="background:${d.color}18; color:${d.color}">${d.icon}</div>
+        <div class="dataset-card-title">${d.title}</div>
+        <div class="dataset-card-desc">${d.desc}</div>
+        ${d.highlights ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;">${d.highlights.map(h=>`<span style="font-size:.72rem;padding:3px 8px;border-radius:6px;background:rgba(230,59,111,.08);color:#e63b6f;font-weight:600;">${h}</span>`).join('')}</div>` : ''}
+      </div>
+      <div class="dataset-card-body">
+        <div class="dataset-card-meta">
+          <span class="tag ${d.tagClass}">${d.category}</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--text-muted)">${d.rows} rows</span>
+        </div>
+        <div class="dataset-card-actions">
+          <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();openDataset(${d.id})">View Details</button>
+          ${d.isReal ? `<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();loadZudioChart()">📊 Charts</button>` : `<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();downloadDataset(${d.id})">⬇ Download</button>`}
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function filterDatasets() { renderDatasets(); }
+
+function setFilter(el) {
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  activeFilter = el.dataset.cat;
+  renderDatasets();
+}
+
+/* ============================================================
+   MODAL
+============================================================ */
+function openDataset(id) {
+  const d = DATASETS.find(x => x.id === id);
+  activeDataset = d;
+  document.getElementById('modalIcon').textContent = d.icon;
+  document.getElementById('modalTitle').textContent = d.title;
+  document.getElementById('modalDesc').textContent = d.desc;
+
+  let extra = '';
+  if (d.isReal) {
+    extra = `
+      <div style="margin:12px 0 4px;padding:12px 14px;background:rgba(230,59,111,.07);border:1px solid rgba(230,59,111,.2);border-radius:8px;font-size:.82rem;color:#e63b6f;font-weight:600;">
+        ✅ Real dataset — uploaded from <code style="font-family:JetBrains Mono,monospace">${d.source}</code>
+      </div>
+      <div style="margin-top:12px;font-size:.8rem;color:var(--text-muted);font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;">Key Highlights</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">${(d.highlights||[]).map(h=>'<span style="font-size:.78rem;padding:4px 10px;border-radius:6px;background:rgba(230,59,111,.08);color:#e63b6f;font-weight:600;">'+h+'</span>').join('')}</div>
+      <div style="margin-top:10px;font-size:.8rem;color:var(--text-muted);font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;">Data Preview (first 5 rows)</div>
+      <div style="overflow-x:auto;border-radius:8px;border:1px solid var(--border);">
+        <table style="width:100%;border-collapse:collapse;font-size:.78rem;">
+          <thead><tr>${d.sample[0].map(h=>'<th style="padding:8px 10px;background:var(--bg);text-align:left;font-family:JetBrains Mono,monospace;font-size:.72rem;color:var(--text-muted);border-bottom:1px solid var(--border);white-space:nowrap;">'+h+'</th>').join('')}</tr></thead>
+          <tbody>${d.sample.slice(1).map(row=>'<tr>'+row.map(cell=>'<td style="padding:7px 10px;border-bottom:1px solid var(--border);color:var(--text-muted);white-space:nowrap;">'+cell+'</td>').join('')+'</tr>').join('')}</tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  document.getElementById('modalDl').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:4px;">
+      <div><dt>Category</dt><dd><span class="tag ${d.tagClass}">${d.category}</span></dd></div>
+      <div><dt>Rows</dt><dd>${d.rows}</dd></div>
+      <div><dt>Columns</dt><dd>${d.cols}</dd></div>
+      <div><dt>File Size</dt><dd>${d.size}</dd></div>
+      <div><dt>Last Updated</dt><dd>${d.updated}</dd></div>
+    </div>
+    ${extra}
+  `;
+
+  // Swap modal action buttons for real datasets
+  const modalActions = document.querySelector('#datasetModal .modal-actions');
+  if (modalActions) {
+    if (d.isReal) {
+      modalActions.innerHTML = `<button class="btn btn-primary" onclick="loadZudioChart();closeModal()">📊 Visualize Data</button><button class="btn btn-outline" onclick="downloadDataset(0)">⬇ Download Sample</button><button class="btn btn-outline" onclick="closeModal()">Close</button>`;
+    } else {
+      modalActions.innerHTML = `<button class="btn btn-primary" onclick="downloadDataset()">⬇ Download Dataset</button><button class="btn btn-outline" onclick="closeModal()">Close</button>`;
+    }
+  }
+
+  document.getElementById('datasetModal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('datasetModal').classList.remove('open');
+}
+
+function downloadDataset(id) {
+  const d = id ? DATASETS.find(x => x.id === id) : activeDataset;
+  if (!d) return;
+  // Build a small CSV from sample
+  const csv = d.sample.map(r => r.join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = d.title.replace(/\s+/g,'_') + '_sample.csv';
+  a.click(); URL.revokeObjectURL(url);
+}
+
+/* ============================================================
+   CHARTS
+============================================================ */
+let mainChartInstance = null;
+let currentChartType = 'bar';
+
+const CHART_DATA = {
+  labels: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+  values: [2304772,2177635,2261136,2264574,2245175,2170034,2212031,2318573,2172476,2372190,2312898,233638],
+};
+
+// Zudio chart switcher
+let zudioView = 'monthly';
+function loadZudioChart(view) {
+  const zudio = DATASETS.find(d => d.id === 0);
+  if (!zudio) return;
+  zudioView = view || zudioView;
+  const cd = zudio.chartData[zudioView];
+  CHART_DATA.labels = cd.labels;
+  CHART_DATA.values = cd.values;
+  const labels = {monthly:'Monthly Sales Profit (₹)', category:'Profit by Category (₹)', state:'Profit by State (₹)', clothing:'Profit by Clothing Type (₹)'};
+  document.getElementById('chartTitle').textContent = 'Zudio Sales 2024 — ' + (labels[zudioView] || zudioView);
+  document.getElementById('chartSub').textContent = 'Real data: Zudio_sales_data.csv | 7,899 records';
+  // Update sub-tabs
+  document.querySelectorAll('.zudio-sub-tab').forEach(t => {
+    t.style.background = t.dataset.view === zudioView ? 'var(--accent)' : '';
+    t.style.color = t.dataset.view === zudioView ? '#fff' : 'var(--text-muted)';
+  });
+  buildMainChart(currentChartType, cd.labels, cd.values);
+  document.getElementById('visualization').scrollIntoView({behavior:'smooth'});
+}
+
+const CHART_COLORS = {
+  primary: '#3b55e6',
+  secondary: '#6c47ff',
+  tertiary: '#00c7b1',
+  danger: '#e63b6f',
+};
+
+function getThemeColor() {
+  return document.documentElement.dataset.theme === 'dark' ? '#e8eaf6' : '#0f1523';
+}
+function getGridColor() {
+  return document.documentElement.dataset.theme === 'dark' ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.06)';
+}
+
+function buildMainChart(type, labels, values) {
+  const ctx = document.getElementById('mainChart').getContext('2d');
+  if (mainChartInstance) mainChartInstance.destroy();
+
+  const textColor = getThemeColor();
+  const gridColor = getGridColor();
+
+  const datasets = [];
+  if (type === 'pie') {
+    datasets.push({
+      data: values,
+      backgroundColor: ['#3b55e6','#6c47ff','#00c7b1','#e63b6f','#e6930a','#3be6c2','#e63bb5','#3b8de6','#86e63b','#e6c43b','#e6573b','#b53be6'],
+      borderWidth: 0, hoverOffset: 8,
+    });
+  } else if (type === 'line') {
+    datasets.push({
+      label: 'Value', data: values,
+      borderColor: '#3b55e6', backgroundColor: 'rgba(59,85,230,.1)',
+      borderWidth: 2.5, fill: true, tension: .4,
+      pointBackgroundColor: '#3b55e6', pointRadius: 4, pointHoverRadius: 6,
+    });
+  } else {
+    datasets.push({
+      label: 'Value', data: values,
+      backgroundColor: values.map((_,i) => `hsl(${230 + i*5},70%,60%)`),
+      borderRadius: 6, borderWidth: 0, hoverBackgroundColor: '#3b55e6',
+    });
+  }
+
+  const options = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: type === 'pie', labels: { color: textColor, padding: 16, font: { family:'DM Sans', size:12 } } },
+      tooltip: { backgroundColor: 'var(--bg-card)', titleColor: textColor, bodyColor: '#6b7492', borderColor: 'var(--border)', borderWidth: 1 },
+    },
+    scales: type === 'pie' ? {} : {
+      x: { ticks: { color: textColor, font: { family:'DM Sans', size:11 } }, grid: { color: gridColor } },
+      y: { ticks: { color: textColor, font: { family:'DM Sans', size:11 } }, grid: { color: gridColor }, beginAtZero: true },
+    },
+  };
+
+  mainChartInstance = new Chart(ctx, { type: type === 'bar' ? 'bar' : type === 'line' ? 'line' : 'doughnut', data: { labels, datasets }, options });
+}
+
+function switchChart(type, el) {
+  document.querySelectorAll('.viz-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  currentChartType = type;
+  buildMainChart(type, CHART_DATA.labels, CHART_DATA.values);
+}
+
+function downloadChart() {
+  if (!mainChartInstance) return;
+  const a = document.createElement('a');
+  a.href = mainChartInstance.toBase64Image();
+  a.download = 'chart.png'; a.click();
+}
+
+/* ============================================================
+   DASHBOARD CHARTS
+============================================================ */
+function buildDashCharts() {
+  const tc = getThemeColor();
+  const gc = getGridColor();
+
+  // Line chart
+  new Chart(document.getElementById('dashChart1').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: ['Jan','Feb','Mar','Apr','May','Jun'],
+      datasets: [{
+        label: 'Uploads', data: [2,4,3,5,7,6],
+        borderColor: '#3b55e6', backgroundColor: 'rgba(59,85,230,.08)',
+        tension: .4, fill: true, borderWidth: 2, pointRadius: 3,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: tc, font:{family:'DM Sans',size:10} }, grid: { color: gc } },
+        y: { ticks: { color: tc, font:{family:'DM Sans',size:10} }, grid: { color: gc }, beginAtZero: true },
+      }
+    }
+  });
+
+  // Doughnut
+  new Chart(document.getElementById('dashChart2').getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Sales','Agriculture','Finance','Health','Technology'],
+      datasets: [{ data: [3,2,3,2,2], backgroundColor: ['#3b55e6','#00c7b1','#e63b6f','#6c47ff','#e6930a'], borderWidth: 0, hoverOffset: 6 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: tc, font:{family:'DM Sans',size:11}, padding:12 } } },
+      cutout: '65%',
+    }
+  });
+}
+
+/* ============================================================
+   FILE UPLOAD
+============================================================ */
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) processFile(file);
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('uploadArea').classList.add('drag-over');
+}
+function handleDragLeave(e) {
+  document.getElementById('uploadArea').classList.remove('drag-over');
+}
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('uploadArea').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+}
+
+function processFile(file) {
+  Papa.parse(file, {
+    header: true, skipEmptyLines: true,
+    complete: function(results) {
+      const data = results.data;
+      const headers = results.meta.fields;
+      renderTable(headers, data);
+      updateChartFromData(headers, data);
+      document.getElementById('tableInfo').textContent =
+        `${data.length} rows × ${headers.length} columns — "${file.name}"`;
+    }
+  });
+}
+
+function renderTable(headers, data) {
+  const preview = data.slice(0, 10);
+  const table = document.getElementById('previewTable');
+  table.innerHTML = `
+    <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+    <tbody>${preview.map(row => `<tr>${headers.map(h => `<td>${row[h] ?? ''}</td>`).join('')}</tr>`).join('')}</tbody>
+  `;
+  document.getElementById('tableWrap').classList.add('visible');
+}
+
+function updateChartFromData(headers, data) {
+  // Use first column as labels, second numeric column as values
+  const numCol = headers.find(h => !isNaN(parseFloat(data[0]?.[h])));
+  if (!numCol) return;
+  const labels = data.slice(0,12).map(r => String(r[headers[0]]).slice(0,10));
+  const values = data.slice(0,12).map(r => parseFloat(r[numCol]) || 0);
+  CHART_DATA.labels = labels;
+  CHART_DATA.values = values;
+  document.getElementById('chartTitle').textContent = `${numCol} — Uploaded Data`;
+  document.getElementById('chartSub').textContent = `Column: ${numCol} | ${labels.length} data points`;
+  buildMainChart(currentChartType, labels, values);
+}
+
+function sendToChart() {
+  document.getElementById('visualization').scrollIntoView({ behavior: 'smooth' });
+}
+
+/* ============================================================
+   CONTACT FORM
+============================================================ */
+function submitForm(e) {
+  e.preventDefault();
+  const btn = e.target.querySelector('button[type=submit]');
+  btn.textContent = 'Sending…'; btn.disabled = true;
+  setTimeout(() => {
+    document.getElementById('formSuccess').style.display = 'block';
+    btn.textContent = 'Send Message →'; btn.disabled = false;
+    e.target.reset();
+  }, 1200);
+}
+
+/* ============================================================
+   DARK MODE
+============================================================ */
+const themeToggle = document.getElementById('themeToggle');
+themeToggle.addEventListener('click', () => {
+  const isDark = document.documentElement.dataset.theme === 'dark';
+  document.documentElement.dataset.theme = isDark ? 'light' : 'dark';
+  themeToggle.textContent = isDark ? '🌙' : '☀️';
+  // Rebuild charts with new colors
+  if (mainChartInstance) buildMainChart(currentChartType, CHART_DATA.labels, CHART_DATA.values);
+});
+
+/* ============================================================
+   MOBILE MENU
+============================================================ */
+function toggleMenu() {
+  document.getElementById('mobileMenu').classList.toggle('open');
+}
+function closeMenu() {
+  document.getElementById('mobileMenu').classList.remove('open');
+}
+
+/* ============================================================
+   SCROLL EFFECTS
+============================================================ */
+window.addEventListener('scroll', () => {
+  // Scroll to top button
+  const scrollTop = document.getElementById('scrollTop');
+  scrollTop.classList.toggle('visible', window.scrollY > 400);
+
+  // Intersection-based fade-in
+  document.querySelectorAll('.fade-in:not(.visible)').forEach(el => {
+    const rect = el.getBoundingClientRect();
+    if (rect.top < window.innerHeight - 60) el.classList.add('visible');
+  });
+});
+
+/* ============================================================
+   COUNTER ANIMATION
+============================================================ */
+function animateCounter(el, target, suffix = '') {
+  let start = 0;
+  const step = Math.ceil(target / 60);
+  const timer = setInterval(() => {
+    start = Math.min(start + step, target);
+    el.textContent = start + suffix;
+    if (start >= target) clearInterval(timer);
+  }, 18);
+}
+
+/* ============================================================
+   INIT
+============================================================ */
+document.addEventListener('DOMContentLoaded', () => {
+  // Trigger initial fade-ins
+  setTimeout(() => {
+    document.querySelectorAll('.fade-in').forEach(el => {
+      const rect = el.getBoundingClientRect();
+      if (rect.top < window.innerHeight - 60) el.classList.add('visible');
+    });
+  }, 100);
+
+  // Animate hero counters
+  setTimeout(() => {
+    animateCounter(document.getElementById('stat-datasets'), 7);
+    animateCounter(document.getElementById('stat-charts'), 36);
+    animateCounter(document.getElementById('stat-categories'), 5);
+  }, 600);
+
+  // Render datasets
+  renderDatasets();
+
+  // Build charts
+  buildMainChart('bar', CHART_DATA.labels, CHART_D
